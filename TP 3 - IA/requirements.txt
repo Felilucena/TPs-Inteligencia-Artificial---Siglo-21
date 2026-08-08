@@ -1,0 +1,8 @@
+# Requirements for Hopfield Network Implementation
+# Trabajo Práctico 3 - Inteligencia Artificial
+
+# Core scientific computing
+numpy>=1.20.0
+
+# Plotting and visualization
+matplotlib>=3.3.0
