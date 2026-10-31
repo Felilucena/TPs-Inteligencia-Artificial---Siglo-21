@@ -1,210 +1,89 @@
-# TP4 - Transformada de Hough para Detección de Rectas
+# TP4 - Transformada de Hough (rectas y circunferencias)
 
-## Descripción
+Inteligencia Artificial - Universidad Siglo 21 - Felipe Lucena
 
-Implementación desde cero de la **Transformada de Hough** para la detección de rectas en imágenes binarias. Este prototipo didáctico demuestra cómo identificar patrones lineales mediante la concentración de votos en el espacio de parámetros.
+Prototipo que aplica la transformada de Hough sobre la foto del block del caso de la industria de motores:
 
-## Representación de las Rectas
+- **Rectas**: detecta los bordes rectos del block y su inclinación en la imagen (referencia para la rotación sobre Z).
+- **Circunferencias**: detecta el aro "C" y devuelve las coordenadas del centro **A = (X, Y)**.
 
-Utilizamos la formulación habitual de Hough en coordenadas polares:
+Todo el procesamiento de imagen está implementado con NumPy, sin OpenCV ni otras "cajas negras". Pillow solo se usa para leer la imagen y Matplotlib para las figuras.
 
-```
-ρ = x·cos(θ) + y·sin(θ)
-```
+## Archivos
 
-Donde:
-- **x, y**: coordenadas del píxel de borde
-- **θ**: ángulo de la recta respecto del eje X
-- **ρ**: distancia de la recta al origen
-
-Cada punto de borde `(x,y)` genera una curva sinusoidal en el espacio de parámetros `(θ,ρ)`. Donde muchas curvas se cruzan (máxima acumulación), tenemos una recta real de la imagen.
-
-## Pasos del Algoritmo
-
-### 1. Generar la imagen de prueba
-- Creamos una matriz `height × width` de ceros (fondo negro)
-- Dibujamos:
-  - Una recta horizontal (píxeles a 255 en una fila concreta)
-  - Una recta diagonal (píxeles a 255 siguiendo una diagonal)
-
-### 2. Seleccionar los píxeles de borde
-- En este prototipo, la imagen ya es binaria: 0 = fondo, 255 = borde
-- Se toman todos los píxeles con valor distinto de cero usando `np.nonzero()`
-
-### 3. Definir el espacio de parámetros
-- **θ**: de -90° a +90° (convertido a radianes)
-- **ρ**: de -diag a +diag, donde diag es la diagonal de la imagen
-
-### 4. Construir el acumulador
-- Creamos una matriz `accumulator[rho_index, theta_index]` inicializada en cero
-- Para cada píxel de borde y para cada θ:
-  - Calculamos ρ = x·cos(θ) + y·sin(θ)
-  - Sumamos 1 en la celda correspondiente del acumulador
-
-### 5. Detección de picos
-- Recorremos el acumulador buscando valores por encima de un umbral (`threshold`)
-- Aplicamos **supresión de no-máximos** para evitar detecciones duplicadas
-- Cada pico se interpreta como una recta detectada (par (ρ, θ))
-- Los picos se ordenan por número de votos (de mayor a menor)
-
-### 6. Visualización
-- Dibujamos las rectas detectadas sobre la imagen original usando la ecuación x·cos(θ) + y·sin(θ) = ρ
-- Mostramos el acumulador como imagen 2D (ρ vs θ) con los picos marcados
-- Cada línea se visualiza con color diferente y su leyenda correspondiente
+| Archivo | Contenido |
+|---|---|
+| `hough_motor.py` | Prototipo completo (validación, rectas, circunferencias) |
+| `block_canvas.png` | Foto de entrada: Figura 2 de la situación problemática (750×395 px) |
+| `salidas/` | Figuras y reportes generados por cada corrida |
+| `hough-rectas.py` | Primera versión (solo rectas sobre imagen sintética), se conserva como antecedente |
 
 ## Instalación
 
-### 1. Crear entorno virtual
-
-**Windows (PowerShell / CMD):**
-```powershell
+```bash
 python -m venv .venv
-```
-
-**Linux / macOS:**
-```bash
-python3 -m venv .venv
-```
-
-### 2. Activar entorno virtual
-
-**Windows (PowerShell):**
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-Si aparece un error de política de ejecución:
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-```
-
-**Windows (CMD):**
-```cmd
-.venv\Scripts\activate.bat
-```
-
-**Linux / macOS:**
-```bash
-source .venv/bin/activate
-```
-
-### 3. Instalar dependencias
-
-Con el entorno virtual activado (igual en ambos sistemas):
-
-```bash
-pip install numpy matplotlib
+# Windows (PowerShell): .\.venv\Scripts\Activate.ps1
+# Linux / macOS:        source .venv/bin/activate
+pip install numpy matplotlib pillow
 ```
 
 ## Uso
 
-Desde la carpeta del proyecto, con el entorno virtual activado:
-
-**Windows (PowerShell / CMD):**
-```powershell
-python hough-rectas.py
-```
-
-**Linux / macOS:**
 ```bash
-python3 hough-rectas.py
+# 1) Validación con imágenes sintéticas de resultado conocido
+python hough_motor.py --modo validar
+
+# 2) Rectas sobre el block (se excluye el recuadro ampliado de la derecha)
+python hough_motor.py --modo rectas --imagen block_canvas.png --recorte 0,0,440,395 --max-rectas 6 --umbral-borde 0.3
+
+# 3) Circunferencia: aro "C" y centro A
+python hough_motor.py --modo circulos --imagen block_canvas.png --recorte 240,150,360,250 --r-min 17 --r-max 26
 ```
 
-> Si el entorno virtual ya está activado, también suele funcionar `python hough-rectas.py` en Linux/macOS.
+`python hough_motor.py -h` lista todos los parámetros. Cada corrida guarda en `salidas/`:
 
-El script generará:
-1. Una ventana con dos gráficos:
-   - **Izquierda**: Imagen original con las rectas detectadas superpuestas
-   - **Derecha**: Acumulador de Hough mostrando el espacio de parámetros
-2. Salida en consola con información de las líneas detectadas
+- `<modo>_preproceso.png`: entrada, anotaciones enmascaradas, magnitud de Sobel y bordes
+- `<modo>_resultado.png`: figuras detectadas sobre la imagen + acumulador de Hough
+- `<modo>_reporte.txt`: el mismo reporte que se imprime en consola
 
-## Parámetros Configurables
+## Pipeline
 
-En la función `hough_lines()`:
-- `theta_res`: Resolución angular en grados (default: 1°)
-- `rho_res`: Resolución en píxeles para ρ (default: 1)
+Sigue las etapas de bajo nivel de visión por computador (adquisición, preprocesamiento, extracción de características) y luego la transformada:
 
-En la función `find_peaks()`:
-- `threshold`: Umbral mínimo de votos para detectar una línea (default: 80)
-- `min_distance`: Distancia mínima entre picos en el espacio de Hough (default: 10)
+1. `load_image` y `crop`: lectura y recorte de la región de interés.
+2. `mask_annotations`: la foto del caso tiene ejes, flechas y puntos de color dibujados encima. El metal es casi gris, así que todo píxel con saturación `(max−min)/max > 0,35` se considera anotación y se reemplaza por un gris neutro. La máscara se dilata 2 px para cubrir el halo pálido que deja la compresión JPEG alrededor de cada trazo.
+3. `to_gray` → `gaussian_blur` (convolución separable) → `sobel` (magnitud y dirección del gradiente).
+4. `non_max_suppression`: adelgaza los bordes a 1 px conservando solo los máximos en la dirección del gradiente (idea central de Canny).
+5. `threshold_edges`: imagen binaria de bordes.
+6. Hough de rectas o de circunferencias.
 
-## Características
+## Hough de rectas
 
-### Características del prototipo
-- ✅ Implementa la transformada de Hough para rectas desde cero (sin usar OpenCV)
-- ✅ Trabaja sobre una imagen binaria simple
-- ✅ Usa resolución configurable de θ (por defecto 1°)
-- ✅ Resolución de ρ en píxeles
-- ✅ Permite:
-  - Obtener el acumulador de Hough
-  - Extraer las rectas detectadas a partir de un umbral
-  - Visualizar el resultado con información detallada
-  - Supresión de no-máximos para evitar duplicados
+- Parametrización polar: `ρ = x·cos θ + y·sen θ`, donde **θ es el ángulo de la normal** a la recta y ρ su distancia al origen. Se usa en lugar de `y = mx + b` porque la pendiente se indetermina en rectas verticales.
+- θ en [−90°, 90°) y ρ en [−diagonal, +diagonal].
+- Votación vectorizada con `np.add.at` (cada píxel de borde vota por todos los θ).
+- `find_peaks`: toma el máximo, lo guarda si supera el umbral y anula su vecindario (supresión de no-máximos), hasta `--max-rectas`.
+- Una recta con normal θ forma `θ − 90°` con la horizontal. El reporte informa esa inclinación para el borde dominante.
+- `estimate_z_rotation`: promedio circular de θ módulo 90°, ponderado por votos. Solo es válido con una cámara perpendicular a la cara del block; en una foto en perspectiva los lados paralelos no se ven paralelos.
 
-### Ventajas
-- **Didáctico**: Se ve claramente cómo:
-  - Se construye el espacio de parámetros
-  - Se llenan los votos en el acumulador
-  - Se relacionan los picos con las rectas de la imagen
-  
-- **Totalmente controlable y modificable**:
-  - Se pueden cambiar fácilmente las resoluciones
-  - Probar distintas imágenes sintéticas
-  - Integrar luego detección de bordes más realista
+## Hough de circunferencias
 
-- **Reproduce el concepto teórico**: A partir de los bordes se identifican patrones (rectas) gracias a la concentración de votos en el espacio de parámetros
+- `(x − xo)² + (y − yo)² = R²` → acumulador 3D (R, yo, xo) con un rango corto de radios, porque por la perspectiva el aro se ve como elipse.
+- **Votación por gradiente** (default): el centro está sobre la normal al borde, así que cada píxel vota solo en esa dirección (±3°, en ambos sentidos), en lugar de en toda la circunferencia. Con `--votar-circunferencia` se usa la votación clásica, para comparar.
+- El puntaje se normaliza por el perímetro 2πR para no favorecer radios grandes.
+- **Centro de una elipse**: ningún R encaja en todo el contorno y el pico se parte en dos lóbulos sobre el eje mayor. El centro A se calcula como el centroide ponderado de las celdas con al menos la mitad del pico (precisión subpíxel).
 
-### Limitaciones
-- **Costo computacional elevado** para imágenes grandes:
-  - Doble bucle sobre píxeles de borde y ángulos θ
-  - Complejidad O(n·m) donde n = píxeles de borde, m = ángulos
+## Resultados sobre la foto del caso
 
-- **No incluye**:
-  - Detección de bordes realista (Canny, Sobel, etc.)
-  - Optimizaciones avanzadas de rendimiento
+| Modo | Resultado |
+|---|---|
+| Validar | Rectas: ρ = −100, θ = −90° y ρ = 141, θ = 45° (esperado). Círculo: A = (110, 90), R = 40 (exacto). |
+| Rectas | Borde dominante θ = 75° (el lateral largo del block sube 15° hacia la derecha). Las familias de ≈ ±75° corresponden a las aristas longitudinales y transversales del block en perspectiva. |
+| Circunferencias | A = (299,4 ; 201,3) px en la imagen completa, R = 19 px (borde interior del aro). |
 
-- **Entornos reales**: Para aplicaciones industriales habría que:
-  - Optimizar la implementación (vectorización, GPU)
-  - Mejorar el preprocesamiento (ruido, iluminación)
-  - Limitar el rango de θ según la aplicación
+## Limitaciones conocidas
 
-## Dificultades
-
-Aunque el código funciona correctamente, conceptualmente aparecen algunas dificultades clásicas:
-
-### 1. Elección del umbral
-- Umbral muy alto → se pierden rectas
-- Umbral muy bajo → aparecen muchas rectas falsas
-- **Solución implementada**: Supresión de no-máximos + búsqueda ordenada por votos
-
-### 2. Resolución de θ y ρ
-- Más resolución = mejor precisión, pero más tiempo de cómputo
-- Hay que balancear precisión vs. rendimiento según la aplicación
-
-### 3. Visualización de rectas infinitas
-- Hay que convertir (ρ, θ) a segmentos finitos para dibujar sobre la imagen
-- **Solución**: Extender la recta con puntos muy alejados y dejar que matplotlib recorte
-
-### 4. Escalado a casos reales
-- En imágenes reales, el ruido y los bordes incompletos hacen más difícil elegir parámetros "buenos"
-- Requiere preprocesamiento cuidadoso y ajuste fino de parámetros
-
-## Ejemplo de Salida
-
-```
-Aplicando transformada de Hough...
-Buscando líneas en el acumulador...
-
-Se detectaron 2 líneas:
-  Línea 1: ρ=-100.00 píxeles, θ=-90.00°, votos=160
-  Línea 2: ρ=141.00 píxeles, θ=45.00°, votos=121
-```
-
-## Estructura del Código
-
-```python
-generate_test_image()     # Genera imagen binaria de prueba
-hough_lines()             # Implementa la transformada de Hough
-find_peaks()              # Detecta picos en el acumulador
-plot_results()            # Visualiza resultados
-```
+- La foto es una vista en perspectiva de 750×395 px: el aro mide unos 20 px de radio y se ve como elipse. En la planta la cámara iría fija y perpendicular a la cara del block.
+- Las anotaciones enmascaradas dejan "huecos" en los bordes reales que cruzaban.
+- Algunas rectas a ±45° pueden ser artefactos: muchos bordes cortos de la textura de fundición se alinean en diagonal por la discretización.
+- Los umbrales (`--umbral-borde`, `--umbral-votos`) y el rango de radios se ajustan a mano para cada imagen.
